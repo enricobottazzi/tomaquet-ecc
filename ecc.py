@@ -198,24 +198,25 @@ class ShamirSecretSharing:
     Shamir's Secret Sharing is a method for dividing a secret value into multiple shares so that a specified number of shares (the threshold) is required to reconstruct the secret. 
     """
 
-    def __init__(self, t, N, secret, prime):
+    def __init__(self, t, N, secret):
         """Initialize the ShamirSecretSharing object of t out on N threshold with a given secret, t, N and prime."""
         # assert that t is smaller than N
         assert t < N
         self.secret = secret
         self.t = t
-        self.prime = prime
+        self.prime = P
         self.N = N
-
     
+    # Pick t-1 random coefficients for a polynomial of degree t-1. f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
     def generate_coefficients(self):
         """Generate random coefficients (between 1 and prime-1) for a polynomial of degree 'degree'.
-        Returns an array of tuples (exponent, coefficient) representing the polynomial.
+        Returns an array coefficient representing the polynomial.
         """
         degree = self.t - 1
         coefficients = [random.randint(1, self.prime - 1) for i in range(degree)] 
         return coefficients 
     
+    # Evaluate the polynomial at the given x value. The x is the ID of the share.
     def evaluate_polynomial(self, coefficients, x):
         """Evaluate the polynomial with the given coefficients at the given x value"""
         result = self.secret
@@ -223,33 +224,45 @@ class ShamirSecretSharing:
             result = (result + coefficient * (x ** (i + 1))) % self.prime
         return result
     
+    # Each user will be given a share, which is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
+    # Note that ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
+    # Also no two users should have the same ID.
     def split_secret(self):
         """Split the secret into N shares, of which T are required to reconstruct the secret."""
         coefficients = self.generate_coefficients()
         shares = [(i, self.evaluate_polynomial(coefficients, i)) for i in range(1, self.N + 1)]
         return shares
     
+    def generate_pub_commitments(self, shares):
+        """Generate the public commitments such that each user can verify that the share is valid."""
+        commitments = [(i, share[1] * G) for i, share in shares]
+        pub_key = self.secret * G
+        # note that these values are public but both the shares and the secret are hidden in the exponentiation 
+        return commitments, pub_key
+
+    # Given a polynomial of degree t-1, we can reconstruct the polynomial from t points using Lagrange interpolation. Note that with fewer than t points, the polynomial cann't be reconstructed.
+    # The result is the evaluation of the reconstructed polynomial at x = 0
     def lagrange_interpolation(self, x_values, y_values):
-        """Reconstruct the polynomial from a set of points"""
-        result = 0
+        secret = 0
         for i in range(len(x_values)):
-            product = y_values[i]
+            product = 1
             for j in range(len(x_values)):
-                if i != j:
-                    product = (product * (0 - x_values[j]) * pow(x_values[i] - x_values[j], self.prime - 2, self.prime)) % self.prime
-            result = (result + product) % self.prime
-        return result
+                if i == j:
+                    continue
+                product = (product * (0 - x_values[j]) * pow(x_values[i] - x_values[j], self.prime - 2, self.prime)) % self.prime
+            secret = (product * y_values[i] + secret) % self.prime
+        return secret
     
     def recover_secret(self, shares):
+        """Recover the secret from a set of shares"""
         if len(shares) < self.t:
             raise ValueError("Not enough shares to recover the secret")
-
+ 
         x_values, y_values = zip(*shares[:self.t])
         secret = self.lagrange_interpolation(x_values, y_values)
         return secret
 
-
-    
+        
 from unittest import TestCase
 
 class ECCTest(TestCase): 
@@ -326,14 +339,13 @@ class ECCTest(TestCase):
 
         threshold = 3
         total_shares = 5
-        prime = 223
         degree = threshold - 1
         secret = 123
-        sss = ShamirSecretSharing(threshold, total_shares, secret, prime)
+        sss = ShamirSecretSharing(threshold, total_shares, secret)
 
         # SSS should not be init if the threshold is greater than the total number of shares
         with self.assertRaises(AssertionError):
-            ShamirSecretSharing(3, 2, secret, prime)
+            ShamirSecretSharing(3, 2, secret)
 
         # Test the generation of the coefficients. 
         coefficients = sss.generate_coefficients()
@@ -367,3 +379,9 @@ class ECCTest(TestCase):
         with self.assertRaises(ValueError):
             sss.recover_secret(random_subset)
 
+        # Applying a scalar to the secret should match the recovered secret generated from all the shares multiplied by the same scalar
+        scalar = 2
+        mul_secret = scalar * secret % P
+        mul_shares = [(ID, scalar * share % P) for ID, share in shares]
+        mul_recovered_secret = sss.recover_secret(mul_shares)
+        assert mul_recovered_secret == mul_secret
