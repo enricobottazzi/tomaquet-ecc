@@ -17,6 +17,8 @@ Primitives for elliptic curve cryptography. Contains:
 - [ ] Add resources 
 - [ ] Add SSS distributed key generation
 - [ ] Compute public key from secret share in a distributed way
+- [ ] Debug DKG 
+- [ ] Add ECC support to DKG
 
 Original scheme
 

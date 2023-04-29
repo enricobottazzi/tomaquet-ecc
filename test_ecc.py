@@ -164,6 +164,10 @@ class ECCTest(unittest.TestCase):
         for i in range(n):
             assert dkg.members[i].index == i
 
+        # Each member shouldn't have their private share yet
+        for member in dkg.members:
+            assert member.private_share == None
+
         # kick off the DKG ceremony
         dkg.kick_off_ceremony()
         
@@ -179,6 +183,14 @@ class ECCTest(unittest.TestCase):
         # Should throw an error if try to add member to the ceremony if the ceremony is full (i.e. the number of members has reached n)
         with self.assertRaises(AssertionError):
             dkg.add_member(123)
+
+        # Each member should now have their private share
+        for member in dkg.members:
+            assert member.private_share != None
+
+        # Should compute the public key for the DKG ceremony
+        assert dkg.compute_public_key() == sum([member.secret for member in dkg.members])
+
 
 if __name__ == '__main__':
     unittest.main()

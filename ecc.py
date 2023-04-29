@@ -285,6 +285,7 @@ class DistributedKeyGeneration:
         self.t = t
         self.N = N
         self.members = []
+        self.public_key = None
     
     def add_member(self, secret):
         """Add a member to the ceremony with the given secret."""
@@ -305,7 +306,21 @@ class DistributedKeyGeneration:
             for share in shares:
                 self.members[share[0] - 1].receive_shares(share)
 
+        # After each member has received the shares, they can compute their private share
+        for member in self.members:
+            member.compute_private_share()
 
+    def compute_public_key (self):
+        """Compute the public key of the ceremony"""
+        # assert that the number of members is equal to N
+        assert len(self.members) == self.N
+        AssertionError("the ceremony is not ready to compute the public key yet, kick off the ceremony first")
+        # collect the secret of all members
+        private_shares = [member.secret for member in self.members]
+        # compute the public key
+        self.public_key = sum(private_shares)
+        return self.public_key
+        
 class DistributedKeyGenerationMember:
 
     def __init__(self, setup, secret, index):
@@ -315,6 +330,7 @@ class DistributedKeyGenerationMember:
         self.secret = secret
         self.index = index
         self.shares = []
+        self.private_share = None
 
     def generate_shares(self):
         """Generate shares of the member's secret for the other members of the ceremony"""
@@ -328,16 +344,12 @@ class DistributedKeyGenerationMember:
     def receive_shares(self, share):
         """Receive shares from another member of the ceremony"""
         self.shares.append(share)
-
-    # def compute_private_share(self):
-    #     """Compute the member's private share"""
-    #     # Assert that the member has received enough shares to build its private share
-    #     assert len(self.shares) == self.setup.N
-    #     # Compute the private share as sum of the shares received 
-    #     private_share = sum([share[1] for share in self.shares])
-    #     return private_share
     
-    # def compute_public_share(self)
+    def compute_private_share(self):
+        """Compute the private share of the member by summing all received shares"""
+        # Considering a share inside shares, add together all the second element of the share tuple
+        self.private_share = sum([share[1] for share in self.shares])
+
 
 
 
