@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from ecc import FieldElement, Point, S256Field, G, N, KeyPair, ShamirSecretSharing
+from ecc import FieldElement, Point, S256Field, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, DistributedKeyGenerationMember
 
 class ECCTest(unittest.TestCase):
 
@@ -134,6 +134,51 @@ class ECCTest(unittest.TestCase):
         pub_shares = [(ID, share * G) for ID, share in shares]
         pub_recovered = sss.recover_secret(pub_shares)
         assert pub_recovered == secret * G
+
+    def test_distributed_key_generation(self):
+
+        # Setup DKG
+        threshold = 3
+        n = 4
+        dkg = DistributedKeyGeneration(threshold, n)
+
+        # Create members of the DKG ceremony
+        member_1_secret = 123
+        member_2_secret = 456
+        member_3_secret = 789
+        member_4_secret = 102
+
+        dkg.add_member(member_1_secret)
+        dkg.add_member(member_2_secret)
+        dkg.add_member(member_3_secret)
+        dkg.add_member(member_4_secret)
+
+        # Check that the members have been added to the ceremony correctly 
+        assert len(dkg.members) == n
+
+        # Check that the secrets of the members have been set correctly
+        for i in range(n):
+            assert dkg.members[i].secret == [member_1_secret, member_2_secret, member_3_secret, member_4_secret][i]
+
+        # Check that their index has been set correctly
+        for i in range(n):
+            assert dkg.members[i].index == i
+
+        # kick off the DKG ceremony
+        dkg.kick_off_ceremony()
+        
+        # Check that the shares received by each users are equal to N
+        for member in dkg.members:
+            assert len(member.shares) == n
+
+        # Check that for each share within the shares received by each the ID of the share is equal to the ID of the member
+        for member in dkg.members:
+            for share in member.shares:
+                assert share[0] == member.index + 1
+
+        # Should throw an error if try to add member to the ceremony if the ceremony is full (i.e. the number of members has reached n)
+        with self.assertRaises(AssertionError):
+            dkg.add_member(123)
 
 if __name__ == '__main__':
     unittest.main()

@@ -194,17 +194,17 @@ class KeyPair:
 import random
 
 class ShamirSecretSharing:
-    """Object containing to perform Shamir Secret Sharing.
+    """Object containing to perform Shamir Secret Sharing with a trusted dealer initializing a secret a sharing across N parties.
     Shamir's Secret Sharing is a method for dividing a secret value into multiple shares so that a specified number of shares (the threshold) is required to reconstruct the secret. 
     """
 
     def __init__(self, t, N, secret):
-        """Initialize the ShamirSecretSharing object of t out on N threshold with a given secret, t, N and prime."""
+        """Initialize the ShamirSecretSharing object of t out on N threshold with the given secret."""
         # assert that t is smaller than N
         assert t < N
         self.secret = secret
         self.t = t
-        self.N = N
+        self.N = N    
     
     # Pick t-1 random coefficients for a polynomial of degree t-1. f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
     def generate_coefficients(self):
@@ -212,7 +212,7 @@ class ShamirSecretSharing:
         Returns an array coefficient representing the polynomial.
         """
         degree = self.t - 1
-        coefficients = [random.randint(1, 1000) for i in range(degree)] 
+        coefficients = [random.randint(1, 2**20) for i in range(degree)] 
         return coefficients 
     
     # Evaluate the polynomial at the given x value. The x is the ID of the share.
@@ -231,7 +231,6 @@ class ShamirSecretSharing:
         coefficients = self.generate_coefficients()
         shares = [(i, self.evaluate_polynomial(coefficients, i)) for i in range(1, self.N + 1)]
         return shares
-
     
     def lagrange_interp(self, x_values, y_values, x):
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes"""
@@ -249,7 +248,7 @@ class ShamirSecretSharing:
             sum += product * y_values[i]
         return sum
     
-    # As described here => https://crypto.stackexchange.com/questions/70756/does-lagrange-interpolation-work-with-points-in-an-elliptic-curve
+    # As described here =>
     def lagrange_interp_ecc(self, x_values, y_values, x):
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes where the y values are points on the elliptic curve"""
         sum = S256Point(None, None)
@@ -279,3 +278,68 @@ class ShamirSecretSharing:
             secret = self.lagrange_interp(x_values, y_values, 0)
         return secret
 
+class DistributedKeyGeneration:
+
+    def __init__(self, t, N):
+        """Initialize the DistributedKeyGeneration object with the given threshold and number of parties."""
+        self.t = t
+        self.N = N
+        self.members = []
+    
+    def add_member(self, secret):
+        """Add a member to the ceremony with the given secret."""
+        # assert that the number of members is smaller than N
+        assert len(self.members) < self.N
+        AssertionError("The number of members is already equal to N")
+        member = DistributedKeyGenerationMember(self, secret, len(self.members))
+        self.members.append(member)
+
+    def kick_off_ceremony(self):
+        """Kick off the ceremony by generating the shares of each member and distributing them to the other members."""
+        # assert that the number of members is equal to N
+        assert len(self.members) == self.N
+        AssertionError("the ceremony is not ready to be kicked off yet, add more members")
+        for member in self.members:
+            shares = member.generate_shares()
+            # Now distribute the shares to other members according to the ID (first element of the tuple) of the share
+            for share in shares:
+                self.members[share[0] - 1].receive_shares(share)
+
+
+class DistributedKeyGenerationMember:
+
+    def __init__(self, setup, secret, index):
+        """Initialize the DistributedKeyGenerationMember object with the setup details of the ceremony, the member's secret and the member index"""
+        self.t = setup.t
+        self.N = setup.N
+        self.secret = secret
+        self.index = index
+        self.shares = []
+
+    def generate_shares(self):
+        """Generate shares of the member's secret for the other members of the ceremony"""
+        sss = ShamirSecretSharing(self.t, self.N, self.secret)
+        shares = sss.split_secret()
+        # keep a share for the member itself and remove the share of the member from the shares to be distributed
+        self.shares.append(shares[self.index])
+        del shares[self.index]
+        return shares
+    
+    def receive_shares(self, share):
+        """Receive shares from another member of the ceremony"""
+        self.shares.append(share)
+
+    # def compute_private_share(self):
+    #     """Compute the member's private share"""
+    #     # Assert that the member has received enough shares to build its private share
+    #     assert len(self.shares) == self.setup.N
+    #     # Compute the private share as sum of the shares received 
+    #     private_share = sum([share[1] for share in self.shares])
+    #     return private_share
+    
+    # def compute_public_share(self)
+
+
+
+
+    

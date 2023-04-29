@@ -4,6 +4,7 @@ Primitives for elliptic curve cryptography. Contains:
 
 - Basic Elliptic Curve Operations Support on secp256k1 curve
 - Shamir Secret Sharing Scheme
+- Distributed Key Generation Scheme
 
 ### TODO 
 
@@ -11,6 +12,11 @@ Primitives for elliptic curve cryptography. Contains:
 - [ ] Add DHKE support
 - [ ] Add Scheme for nullifiers
 - [ ] Publish the repo and add link inside the cryptography forum
+- [ ] Add operations over a finite field in SSS and DKG
+- [ ] Add function to perform partial signature from a secret share
+- [ ] Add resources 
+- [ ] Add SSS distributed key generation
+- [ ] Compute public key from secret share in a distributed way
 
 Original scheme
 
