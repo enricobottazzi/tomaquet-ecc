@@ -249,6 +249,7 @@ class ShamirSecretSharing:
             sum += product * y_values[i]
         return sum
     
+    # As described here => https://crypto.stackexchange.com/questions/70756/does-lagrange-interpolation-work-with-points-in-an-elliptic-curve
     def lagrange_interp_ecc(self, x_values, y_values, x):
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes where the y values are points on the elliptic curve"""
         sum = S256Point(None, None)

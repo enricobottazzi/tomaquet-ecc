@@ -10,6 +10,7 @@ Primitives for elliptic curve cryptography. Contains:
 - [ ] Add function to verify if a share is valid 
 - [ ] Add DHKE support
 - [ ] Add Scheme for nullifiers
+- [ ] Publish the repo and add link inside the cryptography forum
 
 Original scheme
 
