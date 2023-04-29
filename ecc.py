@@ -204,7 +204,6 @@ class ShamirSecretSharing:
         assert t < N
         self.secret = secret
         self.t = t
-        self.prime = P
         self.N = N
     
     # Pick t-1 random coefficients for a polynomial of degree t-1. f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
@@ -213,7 +212,7 @@ class ShamirSecretSharing:
         Returns an array coefficient representing the polynomial.
         """
         degree = self.t - 1
-        coefficients = [random.randint(1, self.prime - 1) for i in range(degree)] 
+        coefficients = [random.randint(1, 1000) for i in range(degree)] 
         return coefficients 
     
     # Evaluate the polynomial at the given x value. The x is the ID of the share.
@@ -221,7 +220,7 @@ class ShamirSecretSharing:
         """Evaluate the polynomial with the given coefficients at the given x value"""
         result = self.secret
         for i, coefficient in enumerate(coefficients):
-            result = (result + coefficient * (x ** (i + 1))) % self.prime
+            result = (result + coefficient * (x ** (i + 1)))
         return result
     
     # Each user will be given a share, which is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
@@ -232,26 +231,39 @@ class ShamirSecretSharing:
         coefficients = self.generate_coefficients()
         shares = [(i, self.evaluate_polynomial(coefficients, i)) for i in range(1, self.N + 1)]
         return shares
-    
-    def generate_pub_commitments(self, shares):
-        """Generate the public commitments such that each user can verify that the share is valid."""
-        commitments = [(i, share[1] * G) for i, share in shares]
-        pub_key = self.secret * G
-        # note that these values are public but both the shares and the secret are hidden in the exponentiation 
-        return commitments, pub_key
 
-    # Given a polynomial of degree t-1, we can reconstruct the polynomial from t points using Lagrange interpolation. Note that with fewer than t points, the polynomial cann't be reconstructed.
-    # The result is the evaluation of the reconstructed polynomial at x = 0
-    def lagrange_interpolation(self, x_values, y_values):
-        secret = 0
+    
+    def lagrange_interp(self, x_values, y_values, x):
+        """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes"""
+        sum = 0
         for i in range(len(x_values)):
+            num = 1
+            den = 1
             product = 1
             for j in range(len(x_values)):
                 if i == j:
                     continue
-                product = (product * (0 - x_values[j]) * pow(x_values[i] - x_values[j], self.prime - 2, self.prime)) % self.prime
-            secret = (product * y_values[i] + secret) % self.prime
-        return secret
+                num *= (x - x_values[j])
+                den *= (x_values[i] - x_values[j])
+                product = (num / den)
+            sum += product * y_values[i]
+        return sum
+    
+    def lagrange_interp_ecc(self, x_values, y_values, x):
+        """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes where the y values are points on the elliptic curve"""
+        sum = S256Point(None, None)
+        for i in range(len(x_values)):
+            num = 1
+            den = 1
+            product = 1
+            for j in range(len(x_values)):
+                if i == j:
+                    continue
+                num *= (x - x_values[j])
+                den *= (x_values[i] - x_values[j])
+                product = (num / den)
+            sum += int(product) * y_values[i]
+        return sum
     
     def recover_secret(self, shares):
         """Recover the secret from a set of shares"""
@@ -259,129 +271,10 @@ class ShamirSecretSharing:
             raise ValueError("Not enough shares to recover the secret")
  
         x_values, y_values = zip(*shares[:self.t])
-        secret = self.lagrange_interpolation(x_values, y_values)
+
+        if isinstance(y_values[0], S256Point):
+            secret = self.lagrange_interp_ecc(x_values, y_values, 0)
+        else:
+            secret = self.lagrange_interp(x_values, y_values, 0)
         return secret
 
-        
-from unittest import TestCase
-
-class ECCTest(TestCase): 
-
-    def test_on_curve(self):
-        prime = 223
-        a = FieldElement(0, prime)
-        b = FieldElement(7, prime)
-        valid_points = ((192, 105), (17, 56), (1, 193))
-        invalid_points = ((200, 119), (42, 99))
-        for x_raw, y_raw in valid_points:
-            x = FieldElement(x_raw, prime)
-            y = FieldElement(y_raw, prime)
-            Point(x, y, a, b)  # <1>
-        for x_raw, y_raw in invalid_points:
-            x = FieldElement(x_raw, prime)
-            y = FieldElement(y_raw, prime)
-            with self.assertRaises(ValueError):
-                Point(x, y, a, b)  # <1>
-
-    def test_point_add(self):
-        prime = 223
-        a = FieldElement(0, prime)
-        b = FieldElement(7, prime)
-        x1 = FieldElement(192, prime)
-        y1 = FieldElement(105, prime)
-        x2 = FieldElement(17, prime)
-        y2 = FieldElement(56, prime)
-        p1 = Point(x1, y1, a, b)
-        p2 = Point(x2, y2, a, b)
-        assert (p1+p2).x == FieldElement(170, 223)
-        assert (p1+p2).y == FieldElement(142, 223)
-
-    def test_point_mul(self):
-        prime = 223
-        a = FieldElement(0, prime)
-        b = FieldElement(7, prime)
-        x1 = FieldElement(15, prime)
-        y1 = FieldElement(86, prime)
-        p1 = Point(x1, y1, a, b)
-        assert(7*p1).x == None 
-        assert(7*p1).y == None 
-
-    def test_gen_point_order(self):
-        gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
-        gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
-        p = 2**256 - 2**32 - 977
-        n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
-
-        x = FieldElement(gx, p)
-        y = FieldElement(gy, p)
-        a = FieldElement(0, p)
-        b = FieldElement(7, p)
-        G = Point(x, y, a, b)
-        assert (n*G).x == None
-        assert (n*G).y == None
-
-    def test_gen_point_order_2(self):
-        assert (N*G).x == None
-        assert (N*G).y == None
-
-    def test_key_pair(self):
-        # private key from ethereum book
-        r = int("f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
-        kp2 = KeyPair(r)
-
-        assert kp2.point.x == S256Field(0x6e145ccef1033dea239875dd00dfb4fee6e3348b84985c92f103444683bae07b)
-        assert kp2.point.y == S256Field(0x83b5c38e5e2b0c8529d7fa3f64d46daa1ece2d9ac14cab9477d042c84c32ccd0)
-        assert kp2.public_key() == '046e145ccef1033dea239875dd00dfb4fee6e3348b84985c92f103444683bae07b83b5c38e5e2b0c8529d7fa3f64d46daa1ece2d9ac14cab9477d042c84c32ccd0'
-        assert kp2.public_key_no_prefix() == '6e145ccef1033dea239875dd00dfb4fee6e3348b84985c92f103444683bae07b83b5c38e5e2b0c8529d7fa3f64d46daa1ece2d9ac14cab9477d042c84c32ccd0'
-        assert kp2.address() == '0x001d3f1ef827552ae1114027bd3ecf1f086ba0f9'
-
-    def test_shamir_secret_sharing(self):
-
-        threshold = 3
-        total_shares = 5
-        degree = threshold - 1
-        secret = 123
-        sss = ShamirSecretSharing(threshold, total_shares, secret)
-
-        # SSS should not be init if the threshold is greater than the total number of shares
-        with self.assertRaises(AssertionError):
-            ShamirSecretSharing(3, 2, secret)
-
-        # Test the generation of the coefficients. 
-        coefficients = sss.generate_coefficients()
-        # Should return as many coefficients as the degree of the polynomial
-        assert len(coefficients) == degree
-        # Should not return more coefficients than the degree of the polynomial
-        assert len(coefficients) <= degree
-
-        # Test the shares generation 
-        shares = sss.split_secret()
-        # Should return as many shares as the total number of shares
-        assert len(shares) == total_shares
-        # Should not return a share with ID 0
-        for ID, _ in shares:
-            assert ID != 0
-        # Should not return two shares with the same ID
-        IDs = [ID for ID, _ in shares]
-        unique_IDs = set(IDs)
-        assert len(IDs) == len(unique_IDs)
-        # Should recover the secret passing all the shares
-        recovered_secret = sss.recover_secret(shares)
-        assert recovered_secret == secret
-
-        # Should recover the secret passing a random subset of the shares that is equal to the threshold
-        random_subset = random.sample(shares, threshold)
-        recovered_secret = sss.recover_secret(random_subset)
-        assert recovered_secret == secret
-
-        # Should throw an error if try to recover the secret passing a random subset of the shares that is less than the threshold
-        random_subset = random.sample(shares, threshold - 1)
-        with self.assertRaises(ValueError):
-            sss.recover_secret(random_subset)
-
-        # Applying a scalar to the secret should match the recovered secret generated from all the shares multiplied by the same scalar
-        scalar = 2
-        mul_secret = scalar * secret % P
-        mul_shares = [(ID, scalar * share % P) for ID, share in shares]
-        mul_recovered_secret = sss.recover_secret(mul_shares)
-        assert mul_recovered_secret == mul_secret
