@@ -76,17 +76,18 @@ class ECCTest(unittest.TestCase):
     def test_shamir_secret_sharing(self):
 
         threshold = 3
-        total_shares = 5
+        n = 5
         degree = threshold - 1
-        secret = FieldElement(random.randint(1, N-1), N)
-        sss = ShamirSecretSharing(threshold, total_shares, secret)
+        prime = N
+        secret = FieldElement(random.randint(1, prime-1), prime)
+        sss = ShamirSecretSharing(threshold, n, secret)
 
         # SSS should not be init if the threshold is greater than the total number of shares
         with self.assertRaises(AssertionError):
             ShamirSecretSharing(3, 2, secret)
 
         # Test the generation of the coefficients. 
-        coefficients = sss.generate_coefficients()
+        coefficients = sss.generate_coefficients(threshold, N)
         # Should return as many coefficients as the degree of the polynomial
         assert len(coefficients) == degree
         # Should not return more coefficients than the degree of the polynomial
@@ -95,7 +96,7 @@ class ECCTest(unittest.TestCase):
         # Test the shares generation 
         shares = sss.split_secret()
         # Should return as many shares as the total number of shares
-        assert len(shares) == total_shares
+        assert len(shares) == n
         # Should not return a share with ID 0
         for ID, _ in shares:
             assert ID.num != 0
@@ -135,41 +136,58 @@ class ECCTest(unittest.TestCase):
         pub_recovered = sss.recover_secret(pub_shares)
         assert pub_recovered == secret.num * G
 
-    # def test_distributed_key_generation(self):
+    def test_distributed_key_generation(self):
 
-    #     # Setup DKG
-    #     threshold = 3
-    #     n = 4
-    #     dkg = DistributedKeyGeneration(threshold, n)
+        # Setup DKG
+        threshold = 3
+        n = 4
+        prime = N
+        dkg = DistributedKeyGeneration(threshold, n, N)
 
-    #     # Create members of the DKG ceremony
-    #     member_1_secret = FieldElement(123, N)
-    #     member_2_secret = FieldElement(456, N)
-    #     member_3_secret = FieldElement(789, N)
-    #     member_4_secret = FieldElement(101112, N)
+        # Create secrets for the members of the DKG ceremony and add them to the ceremony
+        secrets = [FieldElement(random.randint(1, prime-1), prime) for _ in range(n)]
+        for secret in secrets:
+            dkg.add_member(secret)
 
-    #     dkg.add_member(member_1_secret)
-    #     dkg.add_member(member_2_secret)
-    #     dkg.add_member(member_3_secret)
-    #     dkg.add_member(member_4_secret)
+        # Members should have been added to the ceremony correctly 
+        assert len(dkg.members) == n
 
-    #     # Check that the members have been added to the ceremony correctly 
-    #     assert len(dkg.members) == n
+        # Index of the member should have been set correctly. For example, the first member added should have index 1
+        for i in range(n):
+            assert dkg.members[i].index == i + 1
+
+        # kick off the DKG ceremony
+        dkg.kick_off_ceremony()
+
+        # Each member should have received three shares. Each share should have the same ID as the member
+        for member in dkg.members:
+            assert len(member.shares) == threshold
+            for share in member.shares:
+                assert share[0].num == member.index
+
+        
+        # # Consider member 1 as the dealer, check that the user 1 generates the correct number of shares
+        # dealer = dkg.members[0]
+        # shares = dealer.split_secret()
+        # assert len(shares) == threshold
+
+        # # The shares should have IDs of the other members but not of the dealer
+        # IDs = [ID.num for ID, _ in shares]
+        # assert IDs == [2, 3, 4]
+
+    #     # Let member 1 generates the shares. The shares should be 3
+    #     shares = dealer.generate_shares()
+    #     print(shares)
+    #     assert len(shares) == threshold
 
     #     # Check that the secrets of the members have been set correctly
     #     for i in range(n):
     #         assert dkg.members[i].secret == [member_1_secret, member_2_secret, member_3_secret, member_4_secret][i]
 
-    #     # Check that their index has been set correctly
-    #     for i in range(n):
-    #         assert dkg.members[i].index == i
-
     #     # Each member shouldn't have their private share yet
     #     for member in dkg.members:
     #         assert member.private_share == None
 
-    #     # kick off the DKG ceremony
-    #     dkg.kick_off_ceremony()
         
     #     # Check that the shares received by each users are equal to N
     #     for member in dkg.members:

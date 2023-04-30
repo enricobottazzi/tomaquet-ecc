@@ -206,18 +206,20 @@ class ShamirSecretSharing:
         self.t = t
         self.N = N
     
-    def generate_coefficients(self) -> List[FieldElement]:
-        """Generate t - 1 random coefficients (between 1 and prime-1) for a polynomial of degree 'degree'.
+    @staticmethod
+    def generate_coefficients(t, prime) -> List[FieldElement]:
+        """Generate t - 1 random coefficients (between 1 and prime-1) for a polynomial of degree 't - 1'.
         f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
         Returns an array coefficient representing the polynomial.
         """
-        degree = self.t - 1
-        coefficients = [FieldElement(random.randint(1, self.prime-1), self.prime) for _ in range(degree)]
+        degree = t - 1
+        coefficients = [FieldElement(random.randint(1, prime-1), prime) for _ in range(degree)]
         return coefficients 
     
-    def evaluate_polynomial(self, coefficients: List[FieldElement], x: FieldElement) -> FieldElement:
+    @staticmethod
+    def evaluate_polynomial(secret, coefficients: List[FieldElement], x: FieldElement) -> FieldElement:
         """Evaluate the polynomial with the given coefficients at the given x value"""
-        result = self.secret
+        result = secret
         for i, coefficient in enumerate(coefficients):
             result = (result + coefficient * (x ** (i + 1)))
         return result 
@@ -227,8 +229,8 @@ class ShamirSecretSharing:
         The ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
         Also no two users should have the same ID.
         """
-        coefficients = self.generate_coefficients()
-        shares = [(FieldElement(i, self.prime), self.evaluate_polynomial(coefficients, FieldElement(i, self.prime))) for i in range(1, self.N + 1)]
+        coefficients = self.generate_coefficients(self.t, self.prime)
+        shares = [(FieldElement(i, self.prime), self.evaluate_polynomial(self.secret, coefficients, FieldElement(i, self.prime))) for i in range(1, self.N + 1)]
         return shares
     
     def lagrange_interp(self, x_values: List[FieldElement], y_values: List[FieldElement], x: FieldElement) -> FieldElement:
@@ -283,77 +285,81 @@ class ShamirSecretSharing:
 
         return secret
 
+# TO DO: add support for types checking
 class DistributedKeyGeneration:
 
-    def __init__(self, t, N):
-        """Initialize the DistributedKeyGeneration object with the given threshold and number of parties."""
+    def __init__(self, t, N, prime):
+        """Initialize the DistributedKeyGeneration object with the given threshold and number of parties and a prime number that represents the finite field in which the secrets lives"""
         self.t = t
         self.N = N
+        self.prime = prime
         self.members = []
-        self.public_key = None
+        # self.public_key = None
     
-    def add_member(self, secret):
+    def add_member(self, secret : FieldElement):
         """Add a member to the ceremony with the given secret."""
-        # assert that the number of members is smaller than N
         assert len(self.members) < self.N
         AssertionError("The number of members is already equal to N")
-        member = DistributedKeyGenerationMember(self, secret, len(self.members))
+        member = DistributedKeyGenerationMember(self, secret, len(self.members) + 1)
         self.members.append(member)
 
     def kick_off_ceremony(self):
         """Kick off the ceremony by generating the shares of each member and distributing them to the other members."""
-        # assert that the number of members is equal to N
         assert len(self.members) == self.N
         AssertionError("the ceremony is not ready to be kicked off yet, add more members")
         for member in self.members:
-            shares = member.generate_shares()
+            shares = member.split_secret()
             # Now distribute the shares to other members according to the ID (first element of the tuple) of the share
             for share in shares:
-                self.members[share[0] - 1].receive_shares(share)
+                self.members[share[0].num - 1].receive_shares(share)
 
-        # After each member has received the shares, they can compute their private share
-        for member in self.members:
-            member.compute_private_share()
+    #     # # After each member has received the shares, they can compute their private share
+    #     # for member in self.members:
+    #     #     member.compute_private_share()
 
-    def compute_public_key (self):
-        """Compute the public key of the ceremony"""
-        # assert that the number of members is equal to N
-        assert len(self.members) == self.N
-        AssertionError("the ceremony is not ready to compute the public key yet, kick off the ceremony first")
-        # collect the secret of all members
-        private_shares = [member.secret for member in self.members]
-        # compute the public key
-        self.public_key = sum(private_shares)
-        return self.public_key
+    # def compute_public_key (self):
+    #     """Compute the public key of the ceremony"""
+    #     # assert that the number of members is equal to N
+    #     assert len(self.members) == self.N
+    #     AssertionError("the ceremony is not ready to compute the public key yet, kick off the ceremony first")
+    #     # collect the secret of all members
+    #     private_shares = [member.secret for member in self.members]
+    #     # compute the public key
+    #     self.public_key = sum(private_shares)
+    #     return self.public_key
         
 class DistributedKeyGenerationMember:
 
-    def __init__(self, setup, secret, index):
-        """Initialize the DistributedKeyGenerationMember object with the setup details of the ceremony, the member's secret and the member index"""
-        self.t = setup.t
-        self.N = setup.N
-        self.secret = secret
-        self.index = index
-        self.shares = []
-        self.private_share = None
 
-    def generate_shares(self):
-        """Generate shares of the member's secret for the other members of the ceremony"""
-        sss = ShamirSecretSharing(self.t, self.N, self.secret)
-        shares = sss.split_secret()
-        # keep a share for the member itself and remove the share of the member from the shares to be distributed
-        self.shares.append(shares[self.index])
-        del shares[self.index]
+    def __init__(self, setup, secret : FieldElement, index):
+        """Initialize the DistributedKeyGenerationMember object with the setup details of the ceremony, the member's secret and the member index"""
+        assert secret.prime == setup.prime
+        self.t = setup.t 
+        self.N = setup.N 
+        self.secret = secret
+        self.prime = setup.prime
+        self.index = index
+        self.shares: List[Tuple[FieldElement, FieldElement]] = []
+
+    def split_secret(self) -> List[Tuple[FieldElement, FieldElement]]:
+        """Split the secret into N - 1 shares, of which T are required to reconstruct the secret. N - 1 are the number of members in the ceremony that will receive the shares.
+        The dealer itself is also a member of the ceremony but does not receive a share (as he already knows the secret).
+        Each share is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
+        The ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
+        Also no two users should have the same ID.
+        """
+        coefficients = ShamirSecretSharing.generate_coefficients(self.t, self.prime)
+        shares = [(FieldElement(i, self.prime), ShamirSecretSharing.evaluate_polynomial(self.secret, coefficients, FieldElement(i, self.prime))) for i in range(1, self.N + 1) if i != self.index]
         return shares
     
-    def receive_shares(self, share):
+    def receive_shares(self, share : Tuple[FieldElement, FieldElement]):
         """Receive shares from another member of the ceremony"""
         self.shares.append(share)
     
-    def compute_private_share(self):
-        """Compute the private share of the member by summing all received shares"""
-        # Considering a share inside shares, add together all the second element of the share tuple
-        self.private_share = sum([share[1] for share in self.shares])
+    # def compute_private_share(self):
+    #     """Compute the private share of the member by summing all received shares"""
+    #     # Considering a share inside shares, add together all the second element of the share tuple
+    #     self.private_share = sum([share[1] for share in self.shares])
 
 
 
