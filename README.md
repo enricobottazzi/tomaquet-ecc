@@ -8,7 +8,8 @@ Primitives for elliptic curve cryptography. Contains:
 
 ### TODO 
 
-- [ ] Add function to verify if a share is valid 
+- [x] Add function to verify if a share is valid => https://blog.anoma.net/demystifying-aggregatable-distributed-key-generation/
+- [ ] Understand how verification works in DKG
 - [ ] Add DHKE support
 - [ ] Add Scheme for nullifiers
 - [ ] Publish the repo and add link inside the cryptography forum

@@ -137,7 +137,6 @@ A = 0
 B = 7
 N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
 
-
 class S256Point(Point):
     
     def __init__(self, x, y, a=None, b=None):
@@ -217,6 +216,14 @@ class ShamirSecretSharing:
         return coefficients 
     
     @staticmethod
+    def commit_coefficients(secret, coefficients: List[FieldElement]) -> List[S256Point]:
+        """Generate a homomorphic commitment for the given coefficients. It has to homomorphic to hide the secret which is equal to the constant coefficient of the polynomial."""
+        commitment = secret.num * G
+        for _, coefficient in enumerate(coefficients):
+            commitment += coefficient.num * G
+        return commitment
+    
+    @staticmethod
     def evaluate_polynomial(secret, coefficients: List[FieldElement], x: FieldElement) -> FieldElement:
         """Evaluate the polynomial with the given coefficients at the given x value"""
         result = secret
@@ -285,7 +292,6 @@ class ShamirSecretSharing:
 
         return secret
 
-# TO DO: add support for types checking
 class DistributedKeyGeneration:
 
     def __init__(self, t, N, prime):

@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from ecc import FieldElement, Point, S256Field, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, DistributedKeyGenerationMember
+from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, DistributedKeyGenerationMember
 
 class ECCTest(unittest.TestCase):
 
@@ -93,6 +93,11 @@ class ECCTest(unittest.TestCase):
         # Should not return more coefficients than the degree of the polynomial
         assert len(coefficients) <= degree
 
+        # Should generate a commitment for the coefficients and the secret
+        commitment = sss.commit_coefficients(secret, coefficients)
+        # assert that is of type S256Point
+        assert isinstance(commitment, S256Point)
+
         # Test the shares generation 
         shares = sss.split_secret()
         # Should return as many shares as the total number of shares
@@ -107,6 +112,22 @@ class ECCTest(unittest.TestCase):
         # Should recover the secret passing all the shares
         recovered_secret = sss.recover_secret(shares)
         assert recovered_secret == secret
+
+        # # Each user should be able to verify the commitment of the coefficients
+        # for share in shares:
+        #     assert sss.verify_share(share, commitments) == True
+
+
+        # # Create a fake commitment starting from a different secret
+        # fake_secret = FieldElement(random.randint(1, prime-1), prime)
+        # fake_commitment = sss.commit_coefficients(fake_secret, coefficients)
+        # for share in shares:
+        #     sss.verify_share(share, fake_commitment)
+
+        # Should throw an error if try to verify the commitment of the coefficients with a fake commitment
+
+
+        # Should throw an error if try to verify a fake share
 
         # Should recover the secret passing a random subset of the shares that is equal to the threshold
         random_subset = random.sample(shares, threshold)
