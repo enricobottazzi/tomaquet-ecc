@@ -19,7 +19,6 @@ class FieldElement:
         if other is None:
             return True
         return self.num != other.num or self.prime != other.prime
-    
 
     def __add__(self, other):
         if self.prime != other.prime:
@@ -199,46 +198,45 @@ class ShamirSecretSharing:
     """
 
     def __init__(self, t, N, secret):
-        """Initialize the ShamirSecretSharing object of t out on N threshold with the given secret."""
-        # assert that t is smaller than N
+        """Initialize the ShamirSecretSharing object of t out on N threshold with the given secret living in a finite field"""
         assert t < N
-        self.secret = secret
+        self.secret : FieldElement = secret
+        self.prime = secret.prime
         self.t = t
-        self.N = N    
+        self.N = N
     
-    # Pick t-1 random coefficients for a polynomial of degree t-1. f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
-    def generate_coefficients(self):
-        """Generate random coefficients (between 1 and prime-1) for a polynomial of degree 'degree'.
+    def generate_coefficients(self) -> list[FieldElement]:
+        """Generate t - 1 random coefficients (between 1 and prime-1) for a polynomial of degree 'degree'.
+        f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
         Returns an array coefficient representing the polynomial.
         """
         degree = self.t - 1
-        coefficients = [random.randint(1, 2**20) for i in range(degree)] 
+        coefficients = [FieldElement(random.randint(1, self.prime-1), self.prime) for _ in range(degree)]
         return coefficients 
     
-    # Evaluate the polynomial at the given x value. The x is the ID of the share.
-    def evaluate_polynomial(self, coefficients, x):
+    def evaluate_polynomial(self, coefficients : FieldElement, x: FieldElement) -> FieldElement:
         """Evaluate the polynomial with the given coefficients at the given x value"""
         result = self.secret
         for i, coefficient in enumerate(coefficients):
             result = (result + coefficient * (x ** (i + 1)))
-        return result
+        return result 
     
-    # Each user will be given a share, which is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
-    # Note that ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
-    # Also no two users should have the same ID.
-    def split_secret(self):
-        """Split the secret into N shares, of which T are required to reconstruct the secret."""
+    def split_secret(self) -> list[tuple[int, FieldElement]]:
+        """Split the secret into N shares, of which T are required to reconstruct the secret. Each share is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
+        The ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
+        Also no two users should have the same ID.
+        """
         coefficients = self.generate_coefficients()
-        shares = [(i, self.evaluate_polynomial(coefficients, i)) for i in range(1, self.N + 1)]
+        shares = [(FieldElement(i, self.prime), self.evaluate_polynomial(coefficients, FieldElement(i, self.prime))) for i in range(1, self.N + 1)]
         return shares
     
-    def lagrange_interp(self, x_values, y_values, x):
+    def lagrange_interp(self, x_values, y_values, x) -> FieldElement:
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes"""
-        sum = 0
+        sum = FieldElement(0, self.prime)
         for i in range(len(x_values)):
-            num = 1
-            den = 1
-            product = 1
+            num = FieldElement(1, self.prime)
+            den = FieldElement(1, self.prime)
+            product = FieldElement(1, self.prime)
             for j in range(len(x_values)):
                 if i == j:
                     continue
@@ -248,8 +246,8 @@ class ShamirSecretSharing:
             sum += product * y_values[i]
         return sum
     
-    # As described here =>
-    def lagrange_interp_ecc(self, x_values, y_values, x):
+    # As described here => https://crypto.stackexchange.com/questions/70756/does-lagrange-interpolation-work-with-points-in-an-elliptic-curve
+    def lagrange_interp_ecc(self, x_values, y_values, x) -> S256Point:
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes where the y values are points on the elliptic curve"""
         sum = S256Point(None, None)
         for i in range(len(x_values)):
@@ -265,7 +263,7 @@ class ShamirSecretSharing:
             sum += int(product) * y_values[i]
         return sum
     
-    def recover_secret(self, shares):
+    def recover_secret(self, shares : list[tuple[int, FieldElement]]):
         """Recover the secret from a set of shares"""
         if len(shares) < self.t:
             raise ValueError("Not enough shares to recover the secret")
@@ -275,7 +273,7 @@ class ShamirSecretSharing:
         if isinstance(y_values[0], S256Point):
             secret = self.lagrange_interp_ecc(x_values, y_values, 0)
         else:
-            secret = self.lagrange_interp(x_values, y_values, 0)
+            secret = self.lagrange_interp(x_values, y_values, FieldElement(0, self.prime))
         return secret
 
 class DistributedKeyGeneration:

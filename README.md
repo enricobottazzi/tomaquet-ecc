@@ -12,7 +12,7 @@ Primitives for elliptic curve cryptography. Contains:
 - [ ] Add DHKE support
 - [ ] Add Scheme for nullifiers
 - [ ] Publish the repo and add link inside the cryptography forum
-- [ ] Add operations over a finite field in SSS and DKG
+- [x] Add operations over a finite field in SSS and DKG
 - [ ] Add function to perform partial signature from a secret share
 - [ ] Add resources 
 - [ ] Add SSS distributed key generation
