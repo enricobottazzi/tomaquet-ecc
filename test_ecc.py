@@ -94,9 +94,9 @@ class ECCTest(unittest.TestCase):
         assert len(coefficients) <= degree
 
         # Should generate a commitment for the coefficients and the secret
-        commitment = sss.commit_coefficients(secret, coefficients)
-        # assert that is of type S256Point
-        assert isinstance(commitment, S256Point)
+        commitments = sss.commit_coefficients(secret, coefficients)
+        assert isinstance(commitments[0], S256Point)
+        assert len(commitments) == len(coefficients) + 1
 
         # Test the shares generation 
         shares = sss.split_secret()
@@ -113,9 +113,9 @@ class ECCTest(unittest.TestCase):
         recovered_secret = sss.recover_secret(shares)
         assert recovered_secret == secret
 
-        # # Each user should be able to verify the commitment of the coefficients
-        # for share in shares:
-        #     assert sss.verify_share(share, commitments) == True
+        # Each user should be able to verify the commitment of the coefficients
+        for share in shares:
+            assert sss.verify_share(share, commitments) == True
 
 
         # # Create a fake commitment starting from a different secret
