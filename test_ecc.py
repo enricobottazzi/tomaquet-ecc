@@ -131,7 +131,7 @@ class ECCTest(unittest.TestCase):
         assert pub_recovered == pub * secret
 
         # Apply the secret as a scalar multiplication of a generator point
-        pub_shares = [(ID.num, share.num * G) for ID, share in shares]
+        pub_shares = [(ID, share.num * G) for ID, share in shares]
         pub_recovered = sss.recover_secret(pub_shares)
         assert pub_recovered == secret.num * G
 
@@ -143,10 +143,10 @@ class ECCTest(unittest.TestCase):
     #     dkg = DistributedKeyGeneration(threshold, n)
 
     #     # Create members of the DKG ceremony
-    #     member_1_secret = 123
-    #     member_2_secret = 456
-    #     member_3_secret = 789
-    #     member_4_secret = 102
+    #     member_1_secret = FieldElement(123, N)
+    #     member_2_secret = FieldElement(456, N)
+    #     member_3_secret = FieldElement(789, N)
+    #     member_4_secret = FieldElement(101112, N)
 
     #     dkg.add_member(member_1_secret)
     #     dkg.add_member(member_2_secret)

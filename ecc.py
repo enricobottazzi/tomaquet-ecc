@@ -1,6 +1,6 @@
 class FieldElement:
 
-    def __init__(self, num, prime):
+    def __init__(self, num : int, prime : int):
         if num >= prime or num < 0:
             error = 'Num {} not in field range 0 to {}'.format(num, prime-1)
             raise ValueError(error)
@@ -191,21 +191,22 @@ class KeyPair:
         return '0x' + keccak_hash.hexdigest()[-40:]
     
 import random
+from typing import List, Tuple, Union, cast
 
 class ShamirSecretSharing:
     """Object containing to perform Shamir Secret Sharing with a trusted dealer initializing a secret a sharing across N parties.
     Shamir's Secret Sharing is a method for dividing a secret value into multiple shares so that a specified number of shares (the threshold) is required to reconstruct the secret. 
     """
 
-    def __init__(self, t, N, secret):
+    def __init__(self, t: int, N: int, secret: FieldElement):
         """Initialize the ShamirSecretSharing object of t out on N threshold with the given secret living in a finite field"""
-        assert t < N
-        self.secret : FieldElement = secret
+        assert t <= N
+        self.secret = secret
         self.prime = secret.prime
         self.t = t
         self.N = N
     
-    def generate_coefficients(self) -> list[FieldElement]:
+    def generate_coefficients(self) -> List[FieldElement]:
         """Generate t - 1 random coefficients (between 1 and prime-1) for a polynomial of degree 'degree'.
         f(x) = secret + a1*x + a2*x^2 + ... + at-1*x^t-1
         Returns an array coefficient representing the polynomial.
@@ -214,14 +215,14 @@ class ShamirSecretSharing:
         coefficients = [FieldElement(random.randint(1, self.prime-1), self.prime) for _ in range(degree)]
         return coefficients 
     
-    def evaluate_polynomial(self, coefficients : FieldElement, x: FieldElement) -> FieldElement:
+    def evaluate_polynomial(self, coefficients: List[FieldElement], x: FieldElement) -> FieldElement:
         """Evaluate the polynomial with the given coefficients at the given x value"""
         result = self.secret
         for i, coefficient in enumerate(coefficients):
             result = (result + coefficient * (x ** (i + 1)))
         return result 
     
-    def split_secret(self) -> list[tuple[int, FieldElement]]:
+    def split_secret(self) -> List[Tuple[FieldElement, FieldElement]]:
         """Split the secret into N shares, of which T are required to reconstruct the secret. Each share is a tuple (x, f(x)) where x is the ID of the share and f(x) is the evaluation of the polynomial at x.
         The ID should be different than 0, as it would reveal the secret. Remember that the secret is the evaluation of the reconstructed polynomial at x = 0.
         Also no two users should have the same ID.
@@ -230,13 +231,11 @@ class ShamirSecretSharing:
         shares = [(FieldElement(i, self.prime), self.evaluate_polynomial(coefficients, FieldElement(i, self.prime))) for i in range(1, self.N + 1)]
         return shares
     
-    def lagrange_interp(self, x_values, y_values, x) -> FieldElement:
-        """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes"""
+    def lagrange_interp(self, x_values: List[FieldElement], y_values: List[FieldElement], x: FieldElement) -> FieldElement:
+        """Compute the Lagrange interpolation polynomial evaluated at x given the x and y values of the nodes"""
         sum = FieldElement(0, self.prime)
         for i in range(len(x_values)):
-            num = FieldElement(1, self.prime)
-            den = FieldElement(1, self.prime)
-            product = FieldElement(1, self.prime)
+            num, den, product = FieldElement(1, self.prime), FieldElement(1, self.prime), FieldElement(1, self.prime)
             for j in range(len(x_values)):
                 if i == j:
                     continue
@@ -247,7 +246,7 @@ class ShamirSecretSharing:
         return sum
     
     # As described here => https://crypto.stackexchange.com/questions/70756/does-lagrange-interpolation-work-with-points-in-an-elliptic-curve
-    def lagrange_interp_ecc(self, x_values, y_values, x) -> S256Point:
+    def lagrange_interp_ecc(self, x_values: List[int], y_values: List[S256Point], x:int) -> S256Point:
         """Compute the Lagrange interpolation polynomial at x given the x and y values of the nodes where the y values are points on the elliptic curve"""
         sum = S256Point(None, None)
         for i in range(len(x_values)):
@@ -259,21 +258,29 @@ class ShamirSecretSharing:
                     continue
                 num *= (x - x_values[j])
                 den *= (x_values[i] - x_values[j])
-                product = (num / den)
+                product = (num // den)
             sum += int(product) * y_values[i]
         return sum
     
-    def recover_secret(self, shares : list[tuple[int, FieldElement]]):
+    def recover_secret(self, shares: List[Tuple[FieldElement, Union[FieldElement, S256Point]]]) -> Union[FieldElement, S256Point]:
         """Recover the secret from a set of shares"""
         if len(shares) < self.t:
             raise ValueError("Not enough shares to recover the secret")
  
-        x_values, y_values = zip(*shares[:self.t])
+        x_values = [share[0] for share in shares[:self.t]]
+        y_values = [share[1] for share in shares[:self.t]]
 
+        secret: Union[FieldElement, S256Point]
+
+        # The isinstance() function is a built-in Python function that checks if a given object is an instance of a specified class or a subclass thereof.
         if isinstance(y_values[0], S256Point):
-            secret = self.lagrange_interp_ecc(x_values, y_values, 0)
+            x_values_to_int = [x.num for x in x_values]
+            y_values_points = [y for y in y_values if isinstance(y, S256Point)]
+            secret = self.lagrange_interp_ecc(x_values_to_int, y_values_points, 0)
         else:
-            secret = self.lagrange_interp(x_values, y_values, FieldElement(0, self.prime))
+            y_values_field_elements = [y for y in y_values if isinstance(y, FieldElement)]
+            secret = self.lagrange_interp(x_values, y_values_field_elements, FieldElement(0, self.prime))
+
         return secret
 
 class DistributedKeyGeneration:
