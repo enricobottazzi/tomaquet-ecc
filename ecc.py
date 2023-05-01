@@ -237,17 +237,16 @@ class ShamirSecretSharing:
 
         if isinstance(g, S256Point):
             left_side = s_i.num * g
-            right_side =  (i.num ** 0) * commitments[0]
+            right_side = commitments[0]
             for j in range(1, len(commitments)):
                 right_side += (i.num ** j) * commitments[j]
             return left_side == right_side
-        else:
+        if isinstance(g, FieldElement):
             left_side = g ** int(s_i.num)
-            right_side = commitments[0] ** (i.num ** 0)
+            right_side = commitments[0]
             for j in range(1, len(commitments)):
                 right_side *= commitments[j] ** (i.num ** j)
-
-            return left_side.num == right_side.num 
+            return left_side == right_side
 
     @staticmethod
     def evaluate_polynomial(secret: FieldElement, coefficients: List[FieldElement], x: FieldElement) -> FieldElement:
