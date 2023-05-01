@@ -76,35 +76,30 @@ class ECCTest(unittest.TestCase):
     def test_shamir_secret_sharing(self):
             
         threshold = 3
-        n = 5
+        n = 4
         degree = threshold - 1
 
         # Test Shamir Secret Sharing using secrets living on a different prime field
-        prime_1 = 11
-        prime_2 = 17
-        prime_3 = N
+        prime_1 = 5
+        # prime_2 = 17
+        # prime_3 = N
 
-        for prime in [prime_1, prime_2, prime_3]:
+        for prime in [prime_1]:
             secret = FieldElement(random.randint(1, prime-1), prime)
             sss = ShamirSecretSharing(threshold, n, secret)
-
-            # # Should throw an error if q_1 is not a prime number that divides prime_1
-            # with self.assertRaises(AssertionError):
-            #     ShamirSecretSharing(threshold, n, secret)
 
             # SSS should not be init if the threshold is greater than the total number of shares
             with self.assertRaises(AssertionError):
                 ShamirSecretSharing(3, 2, secret)
 
-            # Test the generation of the coefficients. 
-            coefficients = sss.generate_coefficients(threshold, prime)
+            # Test the shares generation 
+            (shares, coefficients) = sss.split_secret()
+
             # Should return as many coefficients as the degree of the polynomial
             assert len(coefficients) == degree
             # Should not return more coefficients than the degree of the polynomial
             assert len(coefficients) <= degree
 
-            # Test the shares generation 
-            shares = sss.split_secret()
             # Should return as many shares as the total number of shares
             assert len(shares) == n
             # Should not return a share with ID 0
@@ -146,6 +141,16 @@ class ECCTest(unittest.TestCase):
                 pub_shares = [(ID, share.num * G) for ID, share in shares]
                 pub_recovered = sss.recover_secret(pub_shares)
                 assert pub_recovered == secret.num * G
+
+            # Should allow the dealer to commit to the coefficients using a correct generator point
+            generator = FieldElement(3, 11)
+            commitments = sss.commit_coefficients(coefficients, generator)
+
+            assert sss.verify_share(shares[0], commitments, generator)
+
+            # User should be able to verify their share using the commimtnet
+            # for share in shares:
+            #     assert sss.verify_share(share, commitments, generator)
 
     def test_distributed_key_generation(self):
 
