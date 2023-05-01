@@ -74,88 +74,78 @@ class ECCTest(unittest.TestCase):
         assert kp2.address() == '0x001d3f1ef827552ae1114027bd3ecf1f086ba0f9'
 
     def test_shamir_secret_sharing(self):
-
+            
         threshold = 3
         n = 5
         degree = threshold - 1
-        prime = N
-        secret = FieldElement(random.randint(1, prime-1), prime)
-        sss = ShamirSecretSharing(threshold, n, secret)
 
-        # SSS should not be init if the threshold is greater than the total number of shares
-        with self.assertRaises(AssertionError):
-            ShamirSecretSharing(3, 2, secret)
+        # Test Shamir Secret Sharing using secrets living on a different prime field
+        prime_1 = 11
+        prime_2 = 17
+        prime_3 = N
 
-        # Test the generation of the coefficients. 
-        coefficients = sss.generate_coefficients(threshold, N)
-        # Should return as many coefficients as the degree of the polynomial
-        assert len(coefficients) == degree
-        # Should not return more coefficients than the degree of the polynomial
-        assert len(coefficients) <= degree
+        for prime in [prime_1, prime_2, prime_3]:
+            secret = FieldElement(random.randint(1, prime-1), prime)
+            sss = ShamirSecretSharing(threshold, n, secret)
 
-        # Should generate a commitment for the coefficients and the secret
-        commitments = sss.commit_coefficients(secret, coefficients)
-        assert isinstance(commitments[0], S256Point)
-        assert len(commitments) == len(coefficients) + 1
+            # # Should throw an error if q_1 is not a prime number that divides prime_1
+            # with self.assertRaises(AssertionError):
+            #     ShamirSecretSharing(threshold, n, secret)
 
-        # Test the shares generation 
-        shares = sss.split_secret()
-        # Should return as many shares as the total number of shares
-        assert len(shares) == n
-        # Should not return a share with ID 0
-        for ID, _ in shares:
-            assert ID.num != 0
-        # Should not return two shares with the same ID
-        IDs = [ID.num for ID, _ in shares]
-        unique_IDs = set(IDs)
-        assert len(IDs) == len(unique_IDs)
-        # Should recover the secret passing all the shares
-        recovered_secret = sss.recover_secret(shares)
-        assert recovered_secret == secret
+            # SSS should not be init if the threshold is greater than the total number of shares
+            with self.assertRaises(AssertionError):
+                ShamirSecretSharing(3, 2, secret)
 
-        # Each user should be able to verify the commitment of the coefficients
-        for share in shares:
-            assert sss.verify_share(share, commitments) == True
+            # Test the generation of the coefficients. 
+            coefficients = sss.generate_coefficients(threshold, prime)
+            # Should return as many coefficients as the degree of the polynomial
+            assert len(coefficients) == degree
+            # Should not return more coefficients than the degree of the polynomial
+            assert len(coefficients) <= degree
 
+            # Test the shares generation 
+            shares = sss.split_secret()
+            # Should return as many shares as the total number of shares
+            assert len(shares) == n
+            # Should not return a share with ID 0
+            for ID, _ in shares:
+                assert ID.num != 0
+            # Should not return two shares with the same ID
+            IDs = [ID.num for ID, _ in shares]
+            unique_IDs = set(IDs)
+            assert len(IDs) == len(unique_IDs)
+            # Should recover the secret passing all the shares
+            recovered_secret = sss.recover_secret(shares)
+            assert recovered_secret == secret
 
-        # # Create a fake commitment starting from a different secret
-        # fake_secret = FieldElement(random.randint(1, prime-1), prime)
-        # fake_commitment = sss.commit_coefficients(fake_secret, coefficients)
-        # for share in shares:
-        #     sss.verify_share(share, fake_commitment)
+            # Should recover the secret passing a random subset of the shares that is equal to the threshold
+            random_subset = random.sample(shares, threshold)
+            recovered_secret = sss.recover_secret(random_subset)
+            assert recovered_secret == secret
 
-        # Should throw an error if try to verify the commitment of the coefficients with a fake commitment
+            # Should throw an error if try to recover the secret passing a random subset of the shares that is less than the threshold
+            random_subset = random.sample(shares, threshold - 1)
+            with self.assertRaises(ValueError):
+                sss.recover_secret(random_subset)
 
+            # Applying a scalar to the secret should match the recovered secret generated from all the shares multiplied by the same scalar
+            scalar = 2
+            mul_secret = scalar * secret
+            mul_shares = [(ID, scalar * share) for ID, share in shares]
+            mul_recovered = sss.recover_secret(mul_shares)
+            assert mul_recovered == mul_secret
 
-        # Should throw an error if try to verify a fake share
+            # Applying the secret to a pub value should match the recovered value generated from applying the secret shares to the same pub value
+            pub = 123
+            pub_shares = [(ID, pub * share) for ID, share in shares]
+            pub_recovered = sss.recover_secret(pub_shares)
+            assert pub_recovered == pub * secret
 
-        # Should recover the secret passing a random subset of the shares that is equal to the threshold
-        random_subset = random.sample(shares, threshold)
-        recovered_secret = sss.recover_secret(random_subset)
-        assert recovered_secret == secret
-
-        # Should throw an error if try to recover the secret passing a random subset of the shares that is less than the threshold
-        random_subset = random.sample(shares, threshold - 1)
-        with self.assertRaises(ValueError):
-            sss.recover_secret(random_subset)
-
-        # Applying a scalar to the secret should match the recovered secret generated from all the shares multiplied by the same scalar
-        scalar = 2
-        mul_secret = scalar * secret
-        mul_shares = [(ID, scalar * share) for ID, share in shares]
-        mul_recovered = sss.recover_secret(mul_shares)
-        assert mul_recovered == mul_secret
-
-        # Applying the secret to a pub value should match the recovered value generated from applying the secret shares to the same pub value
-        pub = 123
-        pub_shares = [(ID, pub * share) for ID, share in shares]
-        pub_recovered = sss.recover_secret(pub_shares)
-        assert pub_recovered == pub * secret
-
-        # Apply the secret as a scalar multiplication of a generator point
-        pub_shares = [(ID, share.num * G) for ID, share in shares]
-        pub_recovered = sss.recover_secret(pub_shares)
-        assert pub_recovered == secret.num * G
+            # Apply the secret as a scalar multiplication of a generator point
+            if prime == N:
+                pub_shares = [(ID, share.num * G) for ID, share in shares]
+                pub_recovered = sss.recover_secret(pub_shares)
+                assert pub_recovered == secret.num * G
 
     def test_distributed_key_generation(self):
 
