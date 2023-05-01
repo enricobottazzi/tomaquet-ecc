@@ -62,6 +62,12 @@ class ECCTest(unittest.TestCase):
         assert (N*G).x == None
         assert (N*G).y == None
 
+    def test_p256_point_homomorphic_operation(self):
+        # Test homomorphic operation on P256 curve
+        left = 21 * G 
+        right = 19 * G + 2 * G
+        assert left == right
+
     def test_key_pair(self):
         # private key from ethereum book
         r = int("f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
@@ -79,10 +85,14 @@ class ECCTest(unittest.TestCase):
         n = 4
         degree = threshold - 1
 
-        # Test Shamir Secret Sharing using secrets living on a different prime field
+        # Test Shamir Secret Sharing using different prime field setups
         prime_1 = 5
         generator_1 = FieldElement(3, 11)
         set_up_1 = (prime_1, generator_1)
+
+        prime_2 = N
+        generator_2 = G
+        set_up_2 = (prime_2, generator_2)
 
         # prime_2 = 1
 
@@ -91,7 +101,7 @@ class ECCTest(unittest.TestCase):
         # generator_3 = G
         # set_up_3 = (prime_3, generator_3)
 
-        for prime, generator in [set_up_1]:
+        for prime, generator in [set_up_1, set_up_2]:
             secret = FieldElement(random.randint(1, prime-1), prime)
             sss = ShamirSecretSharing(threshold, n, secret)
 
@@ -151,6 +161,12 @@ class ECCTest(unittest.TestCase):
 
             # Should allow the dealer to commit to the coefficients using a correct generator point
             commitments = sss.commit_coefficients(coefficients, generator)
+
+            # Commitments should be a list of points if the generator is a point, otherwise a FieldElement
+            if isinstance(generator, S256Point):
+                assert isinstance(commitments[0], S256Point)
+            else:
+                assert isinstance(commitments[0], FieldElement)
 
             # User should be able to verify their share using the commimtnet
             for share in shares:
