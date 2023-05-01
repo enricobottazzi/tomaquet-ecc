@@ -81,10 +81,17 @@ class ECCTest(unittest.TestCase):
 
         # Test Shamir Secret Sharing using secrets living on a different prime field
         prime_1 = 5
-        # prime_2 = 17
-        # prime_3 = N
+        generator_1 = FieldElement(3, 11)
+        set_up_1 = (prime_1, generator_1)
 
-        for prime in [prime_1]:
+        # prime_2 = 1
+
+        # # prime_2 = 17
+        # prime_3 = N
+        # generator_3 = G
+        # set_up_3 = (prime_3, generator_3)
+
+        for prime, generator in [set_up_1]:
             secret = FieldElement(random.randint(1, prime-1), prime)
             sss = ShamirSecretSharing(threshold, n, secret)
 
@@ -143,14 +150,11 @@ class ECCTest(unittest.TestCase):
                 assert pub_recovered == secret.num * G
 
             # Should allow the dealer to commit to the coefficients using a correct generator point
-            generator = FieldElement(3, 11)
             commitments = sss.commit_coefficients(coefficients, generator)
 
-            assert sss.verify_share(shares[0], commitments, generator)
-
             # User should be able to verify their share using the commimtnet
-            # for share in shares:
-            #     assert sss.verify_share(share, commitments, generator)
+            for share in shares:
+                assert sss.verify_share(share, commitments, generator)
 
     def test_distributed_key_generation(self):
 
