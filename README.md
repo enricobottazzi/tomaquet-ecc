@@ -3,22 +3,23 @@
 Primitives for elliptic curve cryptography. Contains:
 
 - Basic Elliptic Curve Operations Support on secp256k1 curve
-- Shamir Secret Sharing Scheme
+- Shamir Secret Sharing Scheme with optional support for Feldman Verifiable Secret Sharing Scheme
 - Distributed Key Generation Scheme
 
-### TODO 
+### Useful Resources 
 
-- [x] Add function to verify if a share is valid => https://blog.anoma.net/demystifying-aggregatable-distributed-key-generation/
-- [ ] Understand how verification works in DKG
+- Elliptic Curve Operations : [Programming Bitcoin](https://digilib.stekom.ac.id/assets/dokumen/ebook/feb_d82be9cf1cb52e2b294a82275318a5c8235444eb_1654093256.pdf)
+- Shamir Secret Sharing Scheme : [Tanja Lange Course](https://www.youtube.com/watch?v=dPIp04ZB_xI&t=21s)
+- Feldman Verifiable Secret Sharing Scheme : [Anoma](https://blog.anoma.net/demystifying-aggregatable-distributed-key-generation/), [Crypto StackExchange](https://crypto.stackexchange.com/questions/6637/understanding-feldmans-vss-with-a-simple-example), [Wikipedia](https://en.wikipedia.org/wiki/Verifiable_secret_sharing#Feldman.E2.80.99s_scheme)
+- Distributed Key Generation Scheme: [Asynchronous Distributed Key Generation](https://youtu.be/3pJx-FCtQhc)
+
+### TODO
+
+- [ ] Add support for DKG
+- [ ] Publish the repo and add link inside the cryptography forum
 - [ ] Add DHKE support
 - [ ] Add Scheme for nullifiers
-- [ ] Publish the repo and add link inside the cryptography forum
-- [x] Add operations over a finite field in SSS and DKG
 - [ ] Add function to perform partial signature from a secret share
-- [ ] Add resources 
-- [ ] Add SSS distributed key generation
-- [ ] Compute public key from secret share in a distributed way
-- [ ] Debug DKG 
 - [ ] Add ECC support to DKG
 
 Original scheme
