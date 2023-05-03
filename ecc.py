@@ -171,23 +171,27 @@ class KeyPair:
         self.secret = secret
         self.point = secret * G
 
-    def private_key(self):
+    def private_key(self) -> str:
         """Return the private key in hexadecimal format."""
         return '{:x}'.format(self.secret).zfill(64)
     
-    def public_key(self):
+    def public_key(self) -> str:
         """Return the public key in hexadecimal format, including the '04' prefix."""
         return '04' + '{:x}'.format(self.point.x.num).zfill(64) + '{:x}'.format(self.point.y.num).zfill(64)
     
-    def public_key_no_prefix(self):
+    def public_key_no_prefix(self) -> str:
         """Return the public key in hexadecimal format, without the '04' prefix."""
         return '{:x}'.format(self.point.x.num).zfill(64) + '{:x}'.format(self.point.y.num).zfill(64)
 
-    def address(self):
+    def address(self) -> str:
         """Calculate and return the Ethereum address derived from the public key."""
         keccak_hash = keccak.new(digest_bits=256)
         keccak_hash.update(bytes.fromhex(self.public_key_no_prefix()))
         return '0x' + keccak_hash.hexdigest()[-40:]
+    
+    def generate_shared_secret(self, public_key_other: S256Point) -> S256Point:
+        """Generate the shared secret from the public key of the other party."""
+        return self.secret * public_key_other
     
 import random
 from typing import List, Tuple, Union, cast
@@ -391,9 +395,6 @@ class DistributedKeyGenerationMember:
     #     """Compute the private share of the member by summing all received shares"""
     #     # Considering a share inside shares, add together all the second element of the share tuple
     #     self.private_share = sum([share[1] for share in self.shares])
-
-
-
 
 
     

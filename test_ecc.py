@@ -245,6 +245,16 @@ class ECCTest(unittest.TestCase):
     #     # Should compute the public key for the DKG ceremony
     #     assert dkg.compute_public_key() == sum([member.secret for member in dkg.members])
 
+    def test_dhke(self):
+
+        a = int("f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
+        alice = KeyPair(a)
+
+        b = int("aaaaa2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
+        bob = KeyPair(b)
+
+        # Alice and Bob should generate the same shared secret
+        assert alice.generate_shared_secret(bob.point) == bob.generate_shared_secret(alice.point)
 
 if __name__ == '__main__':
     unittest.main()

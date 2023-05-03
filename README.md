@@ -5,6 +5,7 @@ Primitives for elliptic curve cryptography. Contains:
 - Basic Elliptic Curve Operations Support on secp256k1 curve
 - Shamir Secret Sharing Scheme with optional support for Feldman Verifiable Secret Sharing Scheme
 - Distributed Key Generation Scheme
+- Diffie Hellman Key Exchange Scheme
 
 ### Useful Resources 
 
