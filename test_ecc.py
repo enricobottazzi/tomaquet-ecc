@@ -256,5 +256,40 @@ class ECCTest(unittest.TestCase):
         # Alice and Bob should generate the same shared secret
         assert alice.generate_shared_secret(bob.point) == bob.generate_shared_secret(alice.point)
 
+    def test_mp_dhke(self):
+
+        a = int("f8f8a2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
+        alice = KeyPair(a)
+
+        b = int("aaaaa2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
+        bob = KeyPair(b)
+
+        c = int("bbbbb2f43c8376ccb0871305060d7b27b0554d2cc72bccf41b2705608452f315", 16)
+        carl = KeyPair(c)
+
+        # Alice and Bob shared secret 
+        ab_ss = alice.generate_shared_secret(bob.point)
+        ba_ss = bob.generate_shared_secret(alice.point)
+
+        # Alice and Carl shared secret 
+        ac_ss = alice.generate_shared_secret(carl.point)
+        ca_ss = carl.generate_shared_secret(alice.point)
+
+        # At this point Alice has a secret. Bob and Carl cannot access this secret unless they collude
+        alice_agg_secret = ab_ss + ac_ss
+
+        assert alice_agg_secret == ba_ss + ca_ss
+
+        # Bob commits to his shared secret 
+        bob_commitment = 2 * ba_ss
+
+        # Carl commits to his shared secret
+        carl_commitment = 2 * ca_ss
+
+        # Alice should be able to prove that she knows the secret behind the commitment 
+        alice_commitment = 2 * alice_agg_secret
+
+        assert alice_commitment == bob_commitment + carl_commitment
+
 if __name__ == '__main__':
     unittest.main()
