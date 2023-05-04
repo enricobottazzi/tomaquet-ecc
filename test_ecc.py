@@ -79,6 +79,14 @@ class ECCTest(unittest.TestCase):
         assert kp2.public_key_no_prefix() == '6e145ccef1033dea239875dd00dfb4fee6e3348b84985c92f103444683bae07b83b5c38e5e2b0c8529d7fa3f64d46daa1ece2d9ac14cab9477d042c84c32ccd0'
         assert kp2.address() == '0x001d3f1ef827552ae1114027bd3ecf1f086ba0f9'
 
+        private_key_over_range = N + 1
+        expected_error_message = "secret must be an integer in the range [1, n-1]"
+
+        with self.assertRaises(ValueError) as cm:
+            KeyPair(private_key_over_range)
+
+        self.assertEqual(str(cm.exception), expected_error_message)
+
     def test_shamir_secret_sharing(self):
             
         threshold = 3

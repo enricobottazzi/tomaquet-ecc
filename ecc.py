@@ -168,6 +168,9 @@ class KeyPair:
 
     def __init__(self, secret):
         """Initialize the KeyPair with a given secret."""
+        # verify that secret is in range [1, n-1]
+        if secret < 1 or secret >= N:
+            raise ValueError('secret must be an integer in the range [1, n-1]')
         self.secret = secret
         self.point = secret * G
 
