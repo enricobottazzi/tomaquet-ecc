@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, DistributedKeyGenerationMember
+from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, Utils
 
 class ECCTest(unittest.TestCase):
 
@@ -102,13 +102,6 @@ class ECCTest(unittest.TestCase):
         generator_2 = G
         set_up_2 = (prime_2, generator_2)
 
-        # prime_2 = 1
-
-        # # prime_2 = 17
-        # prime_3 = N
-        # generator_3 = G
-        # set_up_3 = (prime_3, generator_3)
-
         for prime, generator in [set_up_1, set_up_2]:
             secret = FieldElement(random.randint(1, prime-1), prime)
             sss = ShamirSecretSharing(threshold, n, secret)
@@ -164,21 +157,23 @@ class ECCTest(unittest.TestCase):
             # Apply the secret as a scalar multiplication of a generator point
             if prime == N:
                 pub_shares = [(ID, share.num * G) for ID, share in shares]
-                pub_recovered = sss.recover_secret(pub_shares)
-                assert pub_recovered == secret.num * G
+                pub_recovered_2 = sss.recover_secret_ec(pub_shares)
+                assert pub_recovered_2 == secret.num * G
 
             # Should allow the dealer to commit to the coefficients using a correct generator point
-            commitments = sss.commit_coefficients(coefficients, generator)
+            if type(generator) == S256Point:
+                commitments_ec = sss.commit_coefficients_ec(coefficients, generator)
+                assert type(commitments_ec[0]) == S256Point
+                # User should be able to verify their share using the commimtnet
+                for share in shares:
+                    assert sss.verify_share_ec(share, commitments_ec, generator)
 
-            # Commitments should be a list of points if the generator is a point, otherwise a FieldElement
-            if isinstance(generator, S256Point):
-                assert isinstance(commitments[0], S256Point)
             else:
-                assert isinstance(commitments[0], FieldElement)
-
-            # User should be able to verify their share using the commimtnet
-            for share in shares:
-                assert sss.verify_share(share, commitments, generator)
+                commitments = sss.commit_coefficients(coefficients, generator)
+                assert type(commitments[0]) == FieldElement
+                # User should be able to verify their share using the commimtnet
+                for share in shares:
+                    assert sss.verify_share(share, commitments, generator)
 
     def test_distributed_key_generation(self):
 
@@ -298,6 +293,14 @@ class ECCTest(unittest.TestCase):
         alice_commitment = 2 * alice_agg_secret
 
         assert alice_commitment == bob_commitment + carl_commitment
+
+        # test a different commitment type 
+        bob_commitment_2 = Utils.generate_hash_commitment(ba_ss.x)
+        carl_commitment_2 = Utils.generate_hash_commitment(ca_ss.x)
+        alice_commitment_2 = Utils.generate_hash_commitment(ab_ss.x) + Utils.generate_hash_commitment(ac_ss.x)
+
+        assert alice_commitment_2 == bob_commitment_2 + carl_commitment_2 
+
 
 if __name__ == '__main__':
     unittest.main()

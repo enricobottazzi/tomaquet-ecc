@@ -1,5 +1,7 @@
 # tomaquet ecc
 
+> The library is for educational purposes only. It is not meant to be used in production.
+
 Primitives for elliptic curve cryptography. Contains:
 
 - Basic Elliptic Curve Operations Support on secp256k1 curve
@@ -22,6 +24,7 @@ Primitives for elliptic curve cryptography. Contains:
 - [ ] Add Scheme for nullifiers
 - [ ] Add function to perform partial signature from a secret share
 - [ ] Add ECC support to DKG
+- [ ] Fix typing in the tests
 
 Original scheme
 
