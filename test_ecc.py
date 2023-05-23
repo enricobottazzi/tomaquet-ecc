@@ -5,6 +5,19 @@ from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, Shamir
 
 class ECCTest(unittest.TestCase):
 
+    def test_modulo_operations(self):
+        prime = 223
+        a = [FieldElement(0, prime), FieldElement(1, prime), FieldElement((prime-1)/2, prime), FieldElement((prime+1)/2, prime), FieldElement(prime - 1, prime)]
+        b = [FieldElement(0, prime), FieldElement(1, prime), FieldElement((prime-1)/2, prime), FieldElement((prime+1)/2, prime), FieldElement(prime - 1, prime)]
+
+        # compute all the possible combinations of a+b 
+        for i in range(len(a)):
+            for j in range(len(b)):
+                sum = a[i] + b[j]
+                print("a: {}, b: {}, sum: {}".format(a[i], b[j], sum))
+                print(a[i] <= sum)
+                print(b[j] <= sum)
+
     def test_on_curve(self):
         prime = 223
         a = FieldElement(0, prime)

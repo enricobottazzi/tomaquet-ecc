@@ -19,6 +19,16 @@ class FieldElement:
         if other is None:
             return True
         return self.num != other.num or self.prime != other.prime
+    
+    def __lt__(self, other):
+        if self.prime != other.prime:
+            raise TypeError("Cannot compare two numbers in different Fields")
+        return self.num < other.num
+
+    def __le__(self, other):
+        if self.prime != other.prime:
+            raise TypeError("Cannot compare two numbers in different Fields")
+        return self.num <= other.num
 
     def __add__(self, other):
         if self.prime != other.prime:
