@@ -424,6 +424,90 @@ class DistributedKeyGenerationMember:
     #     # Considering a share inside shares, add together all the second element of the share tuple
     #     self.private_share = sum([share[1] for share in self.shares])
 
+import os
+import sys
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+class TimeLockPuzzle:
+
+    """
+        Class to perform a time lock puzzle based on Rivest, Shamir and Wagner's paper
+        based on https://github.com/drummerjolev/time-lock-puzzle
+    """
+
+    @staticmethod
+    def encrypt(message: bytes, seconds: int, squarings_per_second: int) :
+
+        # hard code safe exponent to use
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+
+        p, q = private_key.private_numbers().p, private_key.private_numbers().q
+        n = private_key.public_key().public_numbers().n
+        phi_n = (p - 1) * (q - 1)
+
+        # Fernet is an asymmetric encryption protocol using AES
+        key = Fernet.generate_key()
+        key_int = int.from_bytes(key, sys.byteorder)
+        cipher_suite = Fernet(key)
+
+        # encrypt the message using Fernet
+        encrypted_message = cipher_suite.encrypt(message)
+
+        # Pick safe, pseudo-random a where 1 < a < n
+        a = int.from_bytes(os.urandom(32), sys.byteorder) % n + 1
+
+        # Time lock key encryption
+        t = seconds * squarings_per_second
+        e = 2**t % phi_n
+        b = TimeLockPuzzle.fast_exponentiation(n, a, e)
+
+        encrypted_key = (key_int % n + b) % n
+        return p, q, n, a, t, encrypted_key, encrypted_message, key_int
+
+    @staticmethod
+    def fast_exponentiation(n: int, g: int, x: int):
+        # reverses binary string
+        binary = bin(x)[2:][::-1]
+        squares = TimeLockPuzzle.successive_squares(g, n, len(binary))
+        # keeps positive powers of two
+        factors = [tup[1] for tup in zip(binary, squares) if tup[0] == '1']
+        acc = 1
+        for factor in factors:
+            acc = acc * factor % n
+        return acc
+
+    @staticmethod
+    def successive_squares(base: int, mod: int, length: int):
+        table = [base % mod]
+        prev = base % mod
+        for n in range(1, length):
+            squared = prev**2 % mod
+            table.append(squared)
+            prev = squared
+        return table
+    
+    @staticmethod
+    def decrypt(n: int, a: int, t: int, enc_key: int, enc_message: int) -> bytes:
+        # Successive squaring to find b
+        # We assume this cannot be parallelized
+        b = a % n
+        for _ in range(t):
+            b = b**2 % n
+        dec_key = (enc_key - b) % n
+
+        # Retrieve key, decrypt message
+        key_bytes = int.to_bytes(dec_key, length=64, byteorder=sys.byteorder)
+        cipher_suite = Fernet(key_bytes)
+        return cipher_suite.decrypt(enc_message)
+
+
 import hashlib
 
 class Utils: 

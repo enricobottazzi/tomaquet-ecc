@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, Utils
+from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, Utils, TimeLockPuzzle
 
 class ECCTest(unittest.TestCase):
 
@@ -313,6 +313,11 @@ class ECCTest(unittest.TestCase):
         alice_commitment_2 = Utils.generate_hash_commitment(ab_ss.x) + Utils.generate_hash_commitment(ac_ss.x)
 
         assert alice_commitment_2 == bob_commitment_2 + carl_commitment_2 
+
+    def test_puzzle(self):
+        (_, _, n, a, t, enc_key, enc_message, _) = TimeLockPuzzle.encrypt(b"hello", 10, 20) 
+
+        assert TimeLockPuzzle.decrypt(n, a, t, enc_key, enc_message) == b"hello"
 
 
 if __name__ == '__main__':
