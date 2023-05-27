@@ -439,7 +439,7 @@ class TimeLockPuzzle:
     """
 
     @staticmethod
-    def encrypt(message: bytes, seconds: int, squarings_per_second: int) :
+    def encrypt(message: bytes, seconds: int, squarings_per_second: int) -> Tuple[int, int, int, int, int, int, bytes, int]:
 
         # hard code safe exponent to use
         private_key = rsa.generate_private_key(
@@ -472,7 +472,7 @@ class TimeLockPuzzle:
         return p, q, n, a, t, encrypted_key, encrypted_message, key_int
 
     @staticmethod
-    def fast_exponentiation(n: int, g: int, x: int):
+    def fast_exponentiation(n: int, g: int, x: int) -> int:
         # reverses binary string
         binary = bin(x)[2:][::-1]
         squares = TimeLockPuzzle.successive_squares(g, n, len(binary))
@@ -484,7 +484,7 @@ class TimeLockPuzzle:
         return acc
 
     @staticmethod
-    def successive_squares(base: int, mod: int, length: int):
+    def successive_squares(base: int, mod: int, length: int) -> list[int]:
         table = [base % mod]
         prev = base % mod
         for n in range(1, length):
@@ -494,7 +494,7 @@ class TimeLockPuzzle:
         return table
     
     @staticmethod
-    def decrypt(n: int, a: int, t: int, enc_key: int, enc_message: int) -> bytes:
+    def decrypt(n: int, a: int, t: int, enc_key: int, enc_message: bytes) -> bytes:
         # Successive squaring to find b
         # We assume this cannot be parallelized
         b = a % n
