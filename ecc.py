@@ -502,7 +502,7 @@ class TimeLockPuzzle:
     """
 
     @staticmethod
-    def encrypt(message: bytes, seconds: int, squarings_per_second: int) -> Tuple[int, int, int, int, int, int, bytes, int]:
+    def encrypt(message: int, seconds: int, squarings_per_second: int) -> Tuple[int, int, int, int, int, int, int, int]:
 
         # hard code safe exponent to use
         private_key = rsa.generate_private_key(
@@ -515,13 +515,9 @@ class TimeLockPuzzle:
         n = private_key.public_key().public_numbers().n
         phi_n = (p - 1) * (q - 1)
 
-        # Fernet is an asymmetric encryption protocol using AES
-        key = Fernet.generate_key()
-        key_int = int.from_bytes(key, sys.byteorder)
-        cipher_suite = Fernet(key)
-
-        # encrypt the message using Fernet
-        encrypted_message = cipher_suite.encrypt(message)
+        # perform encryption using XOR
+        key_int = random.randint(1, 5000)
+        encrypted_message = Utils.xor(message, key_int)
 
         # Pick safe, pseudo-random a where 1 < a < n
         a = int.from_bytes(os.urandom(32), sys.byteorder) % n + 1
@@ -557,7 +553,7 @@ class TimeLockPuzzle:
         return table
     
     @staticmethod
-    def decrypt(n: int, a: int, t: int, enc_key: int, enc_message: bytes) -> bytes:
+    def decrypt(n: int, a: int, t: int, enc_key: int, enc_message: int) -> bytes:
         # Successive squaring to find b
         # We assume this cannot be parallelized
         b = a % n
@@ -566,9 +562,7 @@ class TimeLockPuzzle:
         dec_key = (enc_key - b) % n
 
         # Retrieve key, decrypt message
-        key_bytes = int.to_bytes(dec_key, length=64, byteorder=sys.byteorder)
-        cipher_suite = Fernet(key_bytes)
-        return cipher_suite.decrypt(enc_message)
+        return Utils.xor(enc_message, dec_key)
 
 
 import hashlib

@@ -316,9 +316,12 @@ class ECCTest(unittest.TestCase):
 
     def test_puzzle(self):
 
-        (_, _, n, a, t, enc_key, enc_message, _) = TimeLockPuzzle.encrypt(b"hello", 10, 20) 
+        # generate a random message to encrypt
+        message_to_encrypt = random.randint(1, 1000)
 
-        assert TimeLockPuzzle.decrypt(n, a, t, enc_key, enc_message) == b"hello"
+        (_, _, n, a, t, enc_key, enc_message, _) = TimeLockPuzzle.encrypt(message_to_encrypt, 10, 20) 
+
+        assert TimeLockPuzzle.decrypt(n, a, t, enc_key, enc_message) == message_to_encrypt
 
     def test_xor_encryption(self):
 
