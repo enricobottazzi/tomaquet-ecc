@@ -490,9 +490,7 @@ class RSA:
 import os
 import sys
 
-from cryptography.fernet import Fernet
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
+from sympy import randprime
 
 class TimeLockPuzzle:
 
@@ -504,31 +502,28 @@ class TimeLockPuzzle:
     @staticmethod
     def encrypt(message: int, seconds: int, squarings_per_second: int) -> Tuple[int, int, int, int, int, int, int, int]:
 
-        # hard code safe exponent to use
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048,
-            backend=default_backend()
-        )
-
-        p, q = private_key.private_numbers().p, private_key.private_numbers().q
-        n = private_key.public_key().public_numbers().n
-        phi_n = (p - 1) * (q - 1)
+        p = randprime(0, 200)
+        q = randprime(0, 200)
+        # if p == q, need to regenerate
+        while p == q:
+            p = randprime(0, 200)
+            q = randprime(0, 200)
+        rsa = RSA(p, q)
 
         # perform encryption using XOR
         key_int = random.randint(1, 5000)
         encrypted_message = Utils.xor(message, key_int)
 
         # Pick safe, pseudo-random a where 1 < a < n
-        a = int.from_bytes(os.urandom(32), sys.byteorder) % n + 1
+        a = int.from_bytes(os.urandom(32), sys.byteorder) % rsa.n + 1
 
         # Time lock key encryption
         t = seconds * squarings_per_second
-        e = 2**t % phi_n
-        b = TimeLockPuzzle.fast_exponentiation(n, a, e)
+        e = 2**t % rsa.phi
+        b = TimeLockPuzzle.fast_exponentiation(rsa.n, a, e)
 
-        encrypted_key = (key_int % n + b) % n
-        return p, q, n, a, t, encrypted_key, encrypted_message, key_int
+        encrypted_key = (key_int % rsa.n + b) % rsa.n
+        return rsa.p, rsa.q, rsa.n, a, t, encrypted_key, encrypted_message, key_int
 
     @staticmethod
     def fast_exponentiation(n: int, g: int, x: int) -> int:
@@ -546,7 +541,7 @@ class TimeLockPuzzle:
     def successive_squares(base: int, mod: int, length: int) -> list[int]:
         table = [base % mod]
         prev = base % mod
-        for n in range(1, length):
+        for _ in range(1, length):
             squared = prev**2 % mod
             table.append(squared)
             prev = squared
