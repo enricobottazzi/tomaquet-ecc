@@ -581,3 +581,7 @@ class Utils:
         x_point_hex_str = str(x_point)
         byte_data = bytes.fromhex(x_point_hex_str)
         return hashlib.sha256(byte_data).hexdigest()
+    
+    @staticmethod
+    def xor(input:int, key: int):
+        return input ^ key

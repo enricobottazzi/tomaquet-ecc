@@ -320,6 +320,24 @@ class ECCTest(unittest.TestCase):
 
         assert TimeLockPuzzle.decrypt(n, a, t, enc_key, enc_message) == b"hello"
 
+    def test_xor_encryption(self):
+
+        # generate a random message to encrypt
+        message_to_encrypt = random.randint(1, 1000)
+
+        # generate a random key to encrypt the message with
+        key = random.randint(1, 1000)
+
+        # encrypt the message
+        enc_message = Utils.xor(message_to_encrypt, key)
+
+        # decrypt the message
+        dec_message = Utils.xor(enc_message, key)
+
+        # check that the decrypted message is the same as the original message
+        assert dec_message == message_to_encrypt
+
+
 from sympy import randprime
 
 class TestRSA(unittest.TestCase):
