@@ -424,6 +424,69 @@ class DistributedKeyGenerationMember:
     #     # Considering a share inside shares, add together all the second element of the share tuple
     #     self.private_share = sum([share[1] for share in self.shares])
 
+import math
+from sympy import mod_inverse
+
+class RSA:
+
+    """
+        Class to generate RSA keys, perform encryption and decryption
+    """
+
+    def __init__(self, p: int, q: int):
+        """Initialize the RSA object"""
+        assert RSA.is_prime(p), "p is not prime"
+        assert RSA.is_prime(q), "q is not prime"
+        assert p != q, "p and q should be different"
+        self.p = p
+        self.q = q
+        self.n = p * q
+        self.key_size = self.n.bit_length()
+        self.phi = (p - 1) * (q - 1)
+        self.public_key = self.generate_public_key()
+        self.private_key = self.generate_private_key(self.public_key)
+
+
+    @staticmethod
+    def is_prime(n: int) -> bool:
+        """Check if a number is prime"""
+        if n == 2:
+            return True
+        if n % 2 == 0 or n <= 1:
+            return False
+        sqr = int(math.sqrt(n)) + 1
+        for divisor in range(3, sqr, 2):
+            if n % divisor == 0:
+                return False
+        return True
+    
+    @staticmethod
+    def gcd(a, b):
+        """Calculate the greatest common divisor of a and b using Euclid's Algorithm"""
+        while b != 0:
+            a, b = b, a % b
+        return a
+    
+    def generate_public_key(self):
+        e = random.randint(1, self.phi)
+        g = RSA.gcd(e, self.phi)
+        while g != 1:
+            e = random.randint(1, self.phi)
+            g = RSA.gcd(e, self.phi)
+        return e
+
+    def generate_private_key(self, e):
+        d = mod_inverse(e, self.phi)
+        return d
+
+    def encrypt(self, message: int) -> int:
+        """Encrypt the message using the public key"""
+        return pow(message, self.public_key, self.n)
+    
+    def decrypt(self, message: int) -> int:
+        """Decrypt the message using the private key"""
+        return pow(message, self.private_key, self.n)
+
 import os
 import sys
 

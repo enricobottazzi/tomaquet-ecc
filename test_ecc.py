@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, Utils, TimeLockPuzzle
+from ecc import FieldElement, Point, S256Field, S256Point, G, N, KeyPair, ShamirSecretSharing, DistributedKeyGeneration, Utils, TimeLockPuzzle, RSA
 
 class ECCTest(unittest.TestCase):
 
@@ -315,9 +315,45 @@ class ECCTest(unittest.TestCase):
         assert alice_commitment_2 == bob_commitment_2 + carl_commitment_2 
 
     def test_puzzle(self):
+
         (_, _, n, a, t, enc_key, enc_message, _) = TimeLockPuzzle.encrypt(b"hello", 10, 20) 
 
         assert TimeLockPuzzle.decrypt(n, a, t, enc_key, enc_message) == b"hello"
+
+from sympy import randprime
+
+class TestRSA(unittest.TestCase):
+
+    def setUp(self):
+        p = randprime(0, 200)
+        q = randprime(0, 200)
+        # if p == q, need to regenerate
+        while p == q:
+            p = randprime(0, 200)
+            q = randprime(0, 200)
+        self.rsa = RSA(p, q)
+
+    def test_keys(self):
+        # Ensure that public and private keys are generated
+        self.assertIsNotNone(self.rsa.public_key)
+        self.assertIsNotNone(self.rsa.private_key)
+        
+    def test_encryption_decryption(self):
+        # Ensure that encryption and decryption are working
+        original_message = 20
+        encrypted_message = self.rsa.encrypt(original_message)
+        decrypted_message = self.rsa.decrypt(encrypted_message)
+        self.assertEqual(original_message, decrypted_message)
+        
+    def test_prime(self):
+        # Ensure that is_prime function is working
+        self.assertTrue(self.rsa.is_prime(17))
+        self.assertFalse(self.rsa.is_prime(20))
+
+    def test_gcd(self):
+        # Ensure that gcd function is working
+        self.assertEqual(self.rsa.gcd(48, 18), 6)
+        self.assertEqual(self.rsa.gcd(101, 103), 1)
 
 
 if __name__ == '__main__':
