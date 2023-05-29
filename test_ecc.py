@@ -72,6 +72,22 @@ class ECCTest(unittest.TestCase):
         assert (n*G).y == None
 
     def test_gen_point_order_2(self):
+        gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
+        gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
+        p = 2**256 - 2**32 - 977
+        n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+
+        x = FieldElement(gx, p)
+        y = FieldElement(gy, p)
+        a = FieldElement(0, p)
+        b = FieldElement(7, p)
+        G = Point(x, y, a, b)
+        
+        # The scalar lives in the field n. Therefore n + 1 mod n should be equal to 1 mod n 
+        assert ((n+1)*G).x == G.x
+        assert ((n+1)*G).y == G.y
+
+    def test_gen_point_order_3(self):
         assert (N*G).x == None
         assert (N*G).y == None
 
